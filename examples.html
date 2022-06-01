@@ -6,9 +6,13 @@
     <script src="$dom_component.js"></script>
     <script src="dollar_dom_wc.js"></script>
     <title>$dom.component &amp; Custom Elements (Web Components)</title>
+    <style>
+        p { color: red; }
+        .test{ --app-test-color: darkblue; }
+    </style>
 </head>
 <body>
-    <app-test>
+    <app-test class="test">
         <span slot="test">Changed slot</span>
     </app-test>
     <br>

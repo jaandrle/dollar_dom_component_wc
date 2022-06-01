@@ -21,7 +21,7 @@ $dom.wc= (function(){
      * @type {object}
      * @property {false|"open"|"closed"} mode
      * @property {object} head Pseudo element representing “common place” for styles shared across component instances.
-     * @property {(style_text: string)=> void} head.appendStyle
+     * @property {(style_text: string, parent?: string)=> void} head.appendStyle CSS can be written in generalize form with(out) shadow root by `parent`. This string will be replaced with correct parent selector (`tag_name` when no shadow root, empty elsewhere).
      * @property {(dom_data: HTMLLinkElement)=> void} head.appendLink
      * */
     /**
@@ -31,7 +31,7 @@ $dom.wc= (function(){
      * @property {(mode: false|"open"|"closed")=> T_WC_SideEffects_ShadowRoot} shadowRoot Sets shadow root (see [Using shadow DOM - Web Components | MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM#basic_usage))
      * */
     /**
-     * HTML attributes for the element, defined by {@link Attribute}.
+     * HTML attributes for the element, defined by {@link Attribute} in {@link T_WC_SideEffects}.
      * @typedef T_WC_Attributes
      * @type {object}
      * */
@@ -45,28 +45,33 @@ $dom.wc= (function(){
         const storage= new WeakMap();
         
         let is_config_phase= true;
-        const shadow_root= { mode: false, head: {} };
-        shadow_root.update= function(mode){
-            if(this._locked) throw new Error("Shadow Root can't be changed multiple times!");
-            this._locked= true;
-            this.mode= mode;
-            return shadow_root;
-        };
-        shadow_root.head.appendStyle= function(style_text){
-            if(!this.style) this.style= Object.assign(document.createElement("style"), { type: "text/css" });
-            if(shadow_root.mode===false) style_text= style_text.replace(/:host/g, tag_name);
-            this.style.appendChild(Object.assign(document.createTextNode(style_text.trim())));
-        };
-        shadow_root.head.appendLink= function(dom_data){
-            if(!this.links) this.links= document.createDocumentFragment();
-            this.links.appendChild(Object.assign(document.createElement("link"), dom_data));
-        };
-        shadow_root.head.clone= function(mode){
-            const out= [];
-            if(this.style) out.push(this.style.cloneNode(mode));
-            if(this.links) out.push(this.links.cloneNode(mode));
-            return out;
-        };
+        const shadow_root= { mode: false }; Object.assign(shadow_root, {
+            update(mode){
+                if(this._locked) throw new Error("Shadow Root can't be changed multiple times!");
+                this._locked= true;
+                this.mode= mode;
+                return shadow_root;
+            },
+            head: {
+                appendStyle: configOnlyFunction(function(style_text, parent){
+                    if(!this.style) this.style= Object.assign(document.createElement("style"), { type: "text/css" });
+                    const is_shadow= shadow_root.mode!==false;
+                    if(parent) style_text= style_text.replace(new RegExp(parent, "g"), is_shadow ? "" : tag_name);
+                    if(is_shadow) style_text= style_text.replace(/:host/g, tag_name);
+                    this.style.appendChild(Object.assign(document.createTextNode(style_text.trim())));
+                }),
+                appendLink: configOnlyFunction(function(dom_data){
+                    if(!this.links) this.links= document.createDocumentFragment();
+                    this.links.appendChild(Object.assign(document.createElement("link"), dom_data));
+                }),
+                clone(mode){
+                    const out= [];
+                    if(this.style) out.push(this.style.cloneNode(mode));
+                    if(this.links) out.push(this.links.cloneNode(mode));
+                    return out;
+                }
+            }
+        });
         const funComponent= funConfig({
             tag_name,
             attribute: configOnlyFunction(attribute.bind(null, attributes)),
@@ -133,9 +138,9 @@ $dom.wc= (function(){
         return CustomHTMLElement;
         
         function configOnlyFunction(callback){
-            return (...params)=> {
+            return function(...params){
                 if(!is_config_phase) throw new SyntaxError(`This function can be called only in root of "funConfig" function!`);
-                return callback(...params);
+                return callback.call(this, ...params);
             };
         }
     };

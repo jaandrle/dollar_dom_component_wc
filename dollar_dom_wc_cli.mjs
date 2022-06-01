@@ -1,76 +1,83 @@
 /* jshint esversion: 6,-W097, -W040, node: true, expr: true, undef: true */
-import { readFileSync, writeFileSync, unlinkSync } from "fs";
-import { spawnSync } from "child_process";
-
-const id_debug= process.argv.indexOf("--debug");
-if(id_debug!==-1) process.argv.splice(id_debug, 1);
+import { readFileSync, writeFileSync, existsSync } from "fs";
 
 const version= "2022-06-01";
-const [ , script, file_path= "", ...wca_args ]= process.argv;
 if(process.argv.find(v=> v==="--version"||v==="-v")){
-    console.log("this script\n"+version);
-    console.log("web-component-analyzer");
-    wcaSync([ "--version" ]);
+    console.log(version);
     process.exit(0);
 }
 if(process.argv.find(v=> v==="--help"||v==="-h")){
+    const script= process.argv[1];
     console.log(`
-    Usage: node ${script.slice(script.lastIndexOf("/")+1)} <command> [src file] [options]
+    Generates \`*.d.ts\` files for Custom Elements defined with \`$dom.wc\`.
+    The \`*.d.ts\` files can by used to generate docs & vscode compatibe
+    json files using web-components-analyzer (see https://github.com/runem/web-component-analyzer).
+    
+    Usage: node ${script.slice(script.lastIndexOf("/")+1)} <src file> <target file>
 
-    --debug: Keeps temp files for debugging purposes.
-
-    All another commands/options are passed to web-components-analyzer (see https://github.com/runem/web-component-analyzer),
-    which is used internally via 'npx web-components-analyzer'.
-
-    (For now?), only one file is allowed as source ("src" above).
+        <target file> is by default <src file> with \`*.d.ts\` extension
     `);
-    wcaSync([ "help" ]);
     process.exit(0);
 }
-if(!file_path||file_path.indexOf("*")!==-1){
+
+const src_path= process.argv[2];
+if(!src_path||src_path.indexOf("*")!==-1||!existsSync(src_path)){
     console.log(`
-    File path not specified or targeted multiple (glob) files!
-    Use "--help"/"-h" for more information.
+    File path not specified or targeted multiple (glob) files or not exists!
+    Use "--help"/"-h" for another information.
     `);
     process.exit(1);
 }
+const target_path= process.argv[3] || src_path.replace(".js", ".d.ts");
 
-const components= Array.from(readFileSync(file_path).toString()
+const components= Array.from(readFileSync(src_path).toString()
     .matchAll(/(\/\*\*\s*(?<comment>(\s|\S)+)\s+(\* )?\*\/\s)?.*\$dom\.wc\(.(?<tag_name>[^\"\']+)(?<define>(\s|\S)+)return function/g))
     .map(function({ groups: { tag_name, define, comment= "" } }){
-        const attributes= Array.from(define.matchAll(/(\/\*\*\s*(?<comment>.*)\s*(\*\s*)?\*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))
-            .flatMap(function({ groups: { attribute_parse, comment= "" } }){
-                const atts= /* jshint -W061 */eval(attribute_parse);/* jshint +W061 */
-                return atts.map(text=> text+" "+comment);
+        const out= { tag_name, comment };
+        out.props= Array.from(define.matchAll(/(\/\*\*\s*(?<comment>.*)\s*(\*\s*)?\*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))
+            .map(function({ groups: { attribute_parse, comment= "" } }){
+                const attr= /* jshint -W061 */eval(attribute_parse);/* jshint +W061 */
+                attr.comment= comment;
+                return attr;
             });
-        return [ " "+comment.trim(), ` * @element ${tag_name}`, ...attributes ];
+        out.attrs= out.props.filter(({ name_html })=> name_html!==false)
+            .map(function({ name_html, initial, type, comment= "" }){
+                const name= typeof initial!=="undefined" ? `[${name_html}=${initial}]` : name_html;
+                return ` * @attr {${type}} ${name} ${comment}`;
+            });
+        return out;
     })
-    .reduce(function(acc, curr){
-        return acc+`/**\n${curr.join("\n")}\n * */\nclass CustomHTMLElement extends HTMLElement{}`;
+    .reduce(function(acc, { tag_name, comment, props, attrs }){
+        const name_class= hyphensToCamelCase("HTML-"+tag_name+"Element");
+        return acc + [
+            "/**",
+                comment.trim().split("\n").filter(curr=> curr.indexOf(`@type {${name_class}}`)===-1).join("\n"),
+                " * @element "+tag_name,
+                attrs.join("\n"),
+            " * */",
+            `class ${name_class} extends HTMLElement{`,
+                props.flatMap(({ name_js, initial, type, comment })=> [
+                    `    /** ${comment} */`,
+                    `    ${name_js}: ${type}${typeof initial!=="undefined" ? "= "+attributeInitial(initial) : ""}`
+                ]).join("\n"),
+            "}"
+        ].join("\n");
     }, "");
 
-const tmp_path= file_path.replace(".js", `.tmp${Math.floor(Math.random()*100).toString().padStart(3, "0")}.js`);
-writeFileSync(tmp_path, components);
-wcaSync([ tmp_path, ...wca_args ]);
-if(id_debug===-1){
-    unlinkSync(tmp_path);
-    process.exit(0);
-}
-console.log("Temp file is available here: "+tmp_path);
+writeFileSync(target_path, components);
 
-function attribute(name_js, { initial, type= String, name_html }){
-    const out= [
-        ` * @prop {${type.name.toLowerCase()}} ${typeof initial!==undefined ? "["+name_js+"="+initial+"]" : name_js }`,
-    ];
-    if(name_html!==false){
+function attributeInitial(initial){
+    const t= typeof initial;
+    if(t==="undefined") return initial;
+    if(t!=="string") return String(initial);
+
+    initial= initial.replace(/"/g, '\\"');
+    return `"${initial}"`;
+}
+function attribute(name_js, { initial, name_html, type= String, observed= true }){
+    if(name_html!==false)
         name_html= name_html || camelCaseToHyphens(name_js);
-        out.push(` * @attr {${type.name.toLowerCase()}} ${typeof initial!==undefined ? "["+name_html+"="+initial+"]" : name_html }`);
-    }
-    return out;
+    return { name_js, name_html, initial, type: type.name.toLowerCase(), observed };
 }
 function camelCaseToHyphens(text){ return text.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(); }
-function wcaSync(args, config= {}){
-    const s= spawnSync("npx", [ "web-component-analyzer", ...args ], config);
-    console.log(s.output.join("\n").replace("npm WARN exec The following package was not found and will be installed: web-component-analyzer\n", "").trim());
-    if(s.error|s.status) process.exit(1);
-}
+function hyphensToCamelCase(text){ return text.replace(/-([a-z])/g, (_, l)=> l.toUpperCase()); }

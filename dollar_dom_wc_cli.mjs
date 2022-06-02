@@ -66,6 +66,7 @@ const components= Array.from(readFileSync(src_path).toString()
             "    dispatchEvent(event: Event): boolean;",
             "    dispatchEvent(event: "+events+", params: CustomEventInit): boolean",
             "}",
+            `/** This function is called in \`connectedCallback\` lifecycle event of {@link ${name_class}} */`,
             `interface ${name_class}_connected{`,
             `(this: ${name_class}, {`,
                 props_str.join(",\n"),

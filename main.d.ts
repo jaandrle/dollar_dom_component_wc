@@ -15,6 +15,7 @@ class HTMLAppTestElement extends HTMLElement{
     dispatchEvent(event: Event): boolean;
     dispatchEvent(event: "change", params: CustomEventInit): boolean
 }
+/** This function is called in `connectedCallback` lifecycle event of {@link HTMLAppTestElement} */
 interface HTMLAppTestElement_connected{
 (this: HTMLAppTestElement, {
     /** Test cumulator attribute and property  */

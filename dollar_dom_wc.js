@@ -95,24 +95,21 @@ $dom.wc= (function(){
                     if(name_html && !this.hasAttribute(name_html) || typeof this[name]==="undefined") this[name]= initial;
                     def[name]= this[name];
                 }
-                this.$dom= funComponent.call(this, def);
-                if(!shadow_root.mode) return this.$dom.mount(this);
+                storage.get(this).dom= funComponent.call(this, def);
+                if(!shadow_root.mode) return storage.get(this).dom.mount(this);
 
                 const { el_shadow }= storage.get(this);
                 el_shadow.append(...shadow_root.head.clone(true));
-                this.$dom.mount(el_shadow);
+                storage.get(this).dom.mount(el_shadow);
             }
             attributeChangedCallback(name, value_old, value_new){
                 if(!this.$dom||value_new===value_old) return false;
-                this.$dom.update({ [hyphensToCamelCase(name)]: value_new });
+                storage.get(this).dom.update({ [hyphensToCamelCase(name)]: value_new });
             }
-            disconnectedCallback(){
-                this.$dom= this.$dom.destroy();
-            }
+            disconnectedCallback(){ storage.get(this).dom= storage.get(this).dom.destroy(); }
             constructor(){
                 super();
                 const { mode }= shadow_root;
-                if(!is_props_observed && !mode) return;
 
                 const s= {};
                 if(is_props_observed) s.props= new Map();

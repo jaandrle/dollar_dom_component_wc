@@ -140,7 +140,11 @@ function init(global){
         recalculateDeep(0);
         container= els[0]= document.createDocumentFragment();
         all_els_counter+= 1;
-        return component_out;
+        return Object.assign({ onmount(cb){
+            if(!on_mount_funs) on_mount_funs= new Map();
+            on_mount_funs.set(null, cb);
+            return component_out;
+        } }, component_out);
         function add(el_name, attrs, shift= 0){
             recalculateDeep(shift);
             attrs= attrs || {};
@@ -270,7 +274,6 @@ function init(global){
         }
         
         function destroy(){
-            console.log('ZDE'); /* jshint devel: true *///gulp.keep.line
             if(on_destroy_funs){
                 on_destroy_funs.forEach(onDestroyFunction=> onDestroyFunction.call(container));
             }

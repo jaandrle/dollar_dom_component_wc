@@ -14,7 +14,7 @@ const C= $dom.wc("app-test", function({ attribute, shadowRoot, tag_name }){
     /** Test cumulator attribute and property */
     attribute("count", { initial: 1, type: Number });
     /** Test property without “html part” */
-    attribute("testTest", { name_html: false, initial: "Test text" });
+    attribute("testText", { name_html: false, initial: "Test text" });
 
     const css_color= tag_name+"-color";
     head.appendStyle(`
@@ -26,18 +26,13 @@ const C= $dom.wc("app-test", function({ attribute, shadowRoot, tag_name }){
             color: var(--local-${css_color});
         }`,
     "&");
-
-    /**
-     * @param {object} def
-     * @param {number} def.count=1
-     * @param {string} def.testTest
-     * */
-    return function testComponent({ count, testTest }){
-        const click_event= $dom.componentListener("click", ()=> this.dispatchEvent(new CustomEvent("change", { detail: count })));
+    /** @type {HTMLAppTestElement_connected} */
+    return function testComponent({ count, testText }){
+        const click_event= $dom.componentListener("click", ()=> this.dispatchEvent("change", { detail: count }));
         
         const { add, component, share }= $dom.component("<>");
             component(paragraphComponent({ count }));
-            add("i", null, -1).onupdate({ testTest }, ({ testTest })=> ({ textContent: testTest }));
+            add("i", null, -1).onupdate({ testText }, ({ testText })=> ({ textContent: testText }));
             add("br", null, -1);
             add("slot", { name: "test", className: "bold" }, -1);
                 add("span", { textContent: "Default slot" });

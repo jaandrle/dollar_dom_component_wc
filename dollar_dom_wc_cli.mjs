@@ -49,17 +49,27 @@ const components= Array.from(readFileSync(src_path).toString()
     })
     .reduce(function(acc, { tag_name, comment, props, attrs }){
         const name_class= hyphensToCamelCase("HTML-"+tag_name+"Element");
+        const comment_arr= comment.trim().split("\n").filter(curr=> curr.indexOf(`@type {${name_class}}`)===-1);
+        const events= comment_arr.filter(l=> l.indexOf("@fires")!==-1).reduce((acc, curr)=> acc+(acc?"|":"")+`"${curr.match(/@fires (\S+)/)[1]}"`, "") || "string";
+        const props_str= props.map(({ name_js, initial, type, comment })=> [
+            `    /** ${comment} */`,
+            `    ${name_js}: ${type}${typeof initial!=="undefined" ? "= "+attributeInitial(initial) : ""}`
+        ].join("\n"));
         return acc + [
             "/**",
-                comment.trim().split("\n").filter(curr=> curr.indexOf(`@type {${name_class}}`)===-1).join("\n"),
+                comment_arr.join("\n"),
                 " * @element "+tag_name,
                 attrs.join("\n"),
             " * */",
             `class ${name_class} extends HTMLElement{`,
-                props.flatMap(({ name_js, initial, type, comment })=> [
-                    `    /** ${comment} */`,
-                    `    ${name_js}: ${type}${typeof initial!=="undefined" ? "= "+attributeInitial(initial) : ""}`
-                ]).join("\n"),
+                props_str.join("\n"),
+            "    dispatchEvent(event: Event): boolean;",
+            "    dispatchEvent(event: "+events+", params: CustomEventInit): boolean",
+            "}",
+            `interface ${name_class}_connected{`,
+            `(this: ${name_class}, {`,
+                props_str.join(",\n"),
+            "}): $dom.component_main",
             "}"
         ].join("\n");
     }, "");

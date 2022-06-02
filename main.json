@@ -3,7 +3,7 @@
   "tags": [
     {
       "name": "app-test",
-      "description": "Testing component `app-test`\n\nEvents:\n\n  * `change` {} - `{detail: count}`\n\nSlots:\n\n  * `test` {} - Test slot\n\nAttributes:\n\n  * `count` {number} - Test cumulator attribute and property\n\nProperties:\n\n  * `testTest` {`string`} - Test property without “html part”\n\n  * `count` {number} - Test cumulator attribute and property",
+      "description": "Testing component `app-test`\n\nEvents:\n\n  * `change` {} - `{detail: count}`\n\nSlots:\n\n  * `test` {} - Test slot\n\nAttributes:\n\n  * `count` {number} - Test cumulator attribute and property\n\nProperties:\n\n  * `testText` {`string`} - Test property without “html part”\n\n  * `count` {number} - Test cumulator attribute and property",
       "attributes": [
         {
           "name": "count",

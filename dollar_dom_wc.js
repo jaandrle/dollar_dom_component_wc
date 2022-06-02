@@ -53,6 +53,7 @@ $dom.wc= (function(){
                 return shadow_root;
             },
             head: {
+                style: undefined, links: undefined,
                 appendStyle: configOnlyFunction(function(style_text, parent){
                     if(!this.style) this.style= Object.assign(document.createElement("style"), { type: "text/css" });
                     const is_shadow= shadow_root.mode!==false;
@@ -74,10 +75,11 @@ $dom.wc= (function(){
         });
         const funComponent= funConfig({
             tag_name,
-            attribute: configOnlyFunction(attribute.bind(null, attributes)),
+            attribute: configOnlyFunction(attribute.bind(attributes)),
             shadowRoot: configOnlyFunction(mode=> shadow_root.update(mode))
         });
         is_config_phase= false;
+        const is_props_observed= attributes.find(({ name_html, observed })=> name_html===false&&observed);
         if(shadow_root.mode===false){
             const { style, links }= shadow_root.head;
             if(style) document.head.appendChild(style);
@@ -109,12 +111,21 @@ $dom.wc= (function(){
             }
             constructor(){
                 super();
-                if(!shadow_root.mode) return;
+                const { mode }= shadow_root;
+                if(!is_props_observed && !mode) return;
 
-                storage.set(this, { el_shadow: this.attachShadow({ mode: shadow_root.mode }) });
+                const s= {};
+                if(is_props_observed) s.props= new Map();
+                if(mode) s.el_shadow= this.attachShadow({ mode });
+                storage.set(this, s);
+            }
+            dispatchEvent(event, params){
+                if(typeof event!=="string") return super.dispatchEvent(event);
+                return super.dispatchEvent(new CustomEvent(event, params));
             }
         };
-        Object.defineProperty(CustomHTMLElement, "name", { value: hyphensToCamelCase("HTML-"+tag_name+"-element") });
+        Reflect.defineProperty(CustomHTMLElement, "tagName", { value: tag_name });
+        Reflect.defineProperty(CustomHTMLElement, "name", { value: hyphensToCamelCase("HTML-"+tag_name+"-element") });
         for(const { name, name_html, observed, type } of attributes){
             if(!name_html && !observed) continue;
             Reflect.defineProperty(CustomHTMLElement.prototype, name, name_html ? {
@@ -125,12 +136,11 @@ $dom.wc= (function(){
                         this.setAttribute(name_html, val) :
                         ( val ? this.setAttribute(name_html, "") : this.removeAttribute(name_html) ); }
             } : {
-                get(){ return this["__"+name]; },
+                get(){ return storage.get(this).props.get(name); },
                 set(val_new){
-                    const n= "__"+name;
-                    const val_prev= this[n];
-                    this.attributeChangedCallback(name, val_prev, val_new);
-                    return ( this[n]= val_new );
+                    const p= storage.get(this).props;
+                    this.attributeChangedCallback(name, p.get(name), val_new);
+                    return p.set(name, val_new);
                 }
             });
         }
@@ -139,21 +149,16 @@ $dom.wc= (function(){
         
         function configOnlyFunction(callback){
             return function(...params){
-                if(!is_config_phase) throw new SyntaxError(`This function can be called only in root of "funConfig" function!`);
-                return callback.call(this, ...params);
+                if(is_config_phase) return callback.call(this, ...params);
+                throw new SyntaxError(`This function can be called only in root of "funConfig" function!`);
             };
         }
     };
 
-    function globalStyle(styles){
-        if(!el_style)
-            el_style= document.head.appendChild(Object.assign(document.createElement("style"), { type: "text/css" }));
-        el_style.appendChild(document.createTextNode(styles));
-    }
-    function attribute(target, name, { name_html, type= String, observed= true, initial }= {}){
+    function attribute(name, { name_html, initial, type= String, observed= true }= {}){
         if(typeof name_html==="undefined")
             name_html= camelCaseToHyphens(name);
-        target.push({ name, name_html, observed, type, initial });
+        this.push({ name, name_html, observed, type, initial });
     }
     
     function hyphensToCamelCase(text){ return text.replace(/-([a-z])/g, (_, l)=> l.toUpperCase()); }

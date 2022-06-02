@@ -11,5 +11,15 @@ class HTMLAppTestElement extends HTMLElement{
     /** Test cumulator attribute and property  */
     count: number= 1
     /** Test property without “html part”  */
-    testTest: string= "Test text"
+    testText: string= "Test text"
+    dispatchEvent(event: Event): boolean;
+    dispatchEvent(event: "change", params: CustomEventInit): boolean
+}
+interface HTMLAppTestElement_connected{
+(this: HTMLAppTestElement, {
+    /** Test cumulator attribute and property  */
+    count: number= 1,
+    /** Test property without “html part”  */
+    testText: string= "Test text"
+}): $dom.component_main
 }

@@ -34,7 +34,7 @@ const components= Array.from(readFileSync(src_path).toString()
     .matchAll(/(\/\*\*\s*(?<comment>(\s|\S)+)\s+(\* )?\*\/\s)?.*\$dom\.wc\(.(?<tag_name>[^\"\']+)(?<define>(\s|\S)+)return function/g))
     .map(function({ groups: { tag_name, define, comment= "" } }){
         const out= { tag_name, comment };
-        out.props= Array.from(define.matchAll(/(\/\*\*\s*(?<comment>.*)\s*(\*\s*)?\*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))
+        out.props= Array.from(define.matchAll(/(\/\*\* (?<comment>.*) \*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))
             .map(function({ groups: { attribute_parse, comment= "" } }){
                 const attr= /* jshint -W061 */eval(attribute_parse);/* jshint +W061 */
                 attr.comment= comment;
@@ -45,9 +45,24 @@ const components= Array.from(readFileSync(src_path).toString()
                 const name= typeof initial!=="undefined" ? `[${name_html}=${initial}]` : name_html;
                 return ` * @attr {${type}} ${name} ${comment}`;
             });
+        out.css_vars= Array.from(define.matchAll(/head\.cssVariables\((?<vars>[^\}]+\})(,\s*)?(?<args>[^\)]+)?\)/g))
+            .flatMap(function({ groups: { vars, args } }){
+                const is_scoped= /* jshint -W061 */eval(args);/* jshint +W061 */
+                const vars_full= JSON.parse(vars.replace(/(\/\*\* (?<comment>.*) \*\/\n?)?\s*(?<name>[^:\/]+): +(?<initial>[^}\n]*(?<!,| +))(?<colon>,)?/g, cssVarsToJSON));
+                return Object.entries(vars_full).map(function([ name, [ initial, comment ] ]){
+                    const initial_str= initial ? "="+initial : "";
+                    return ` * @cssprop [--${is_scoped?tag_name+"-":""}${name}${initial_str}] - ${comment}`;
+                });
+            });
         return out;
+
+        function cssVarsToJSON(...a){
+            const { comment= "", name, initial, colon= "" }= a.pop();
+            const description= comment.replace(/"/g, '\\"');
+            return `"${name}": [ ${initial}, "${description}" ]${colon}`;
+        }
     })
-    .reduce(function(acc, { tag_name, comment, props, attrs }){
+    .reduce(function(acc, { tag_name, comment, props, attrs, css_vars }){
         const name_class= hyphensToCamelCase("HTML-"+tag_name+"Element");
         const comment_arr= comment.trim().split("\n").filter(curr=> curr.indexOf(`@type {${name_class}}`)===-1);
         const events= comment_arr.filter(l=> l.indexOf("@fires")!==-1).reduce((acc, curr)=> acc+(acc?"|":"")+`"${curr.match(/@fires (\S+)/)[1]}"`, "") || "string";
@@ -60,6 +75,7 @@ const components= Array.from(readFileSync(src_path).toString()
                 comment_arr.join("\n"),
                 " * @element "+tag_name,
                 attrs.join("\n"),
+                css_vars.join("\n"),
             " * */",
             `class ${name_class} extends HTMLElement{`,
                 props_str.join("\n"),

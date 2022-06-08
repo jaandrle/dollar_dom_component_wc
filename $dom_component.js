@@ -137,21 +137,16 @@ function init(global){
          * @type {Object}
          */
         if(!isInternalElement("fragment", el_name, safe_el_name_only)) return add(el_name, attrs);
-        recalculateDeep(0);
-        container= els[0]= document.createDocumentFragment();
-        all_els_counter+= 1;
-        return Object.assign({ onmount(cb){
-            if(!on_mount_funs) on_mount_funs= new Map();
-            on_mount_funs.set(null, cb);
-            return component_out;
-        } }, component_out);
-        function add(el_name, attrs, shift= 0){
+        return _addElement(document.createDocumentFragment(), attrs, 0);
+        
+        function add(el_name, attrs, shift= 0){ return _addElement(createElement(el_name), attrs, shift); }
+        function _addElement(el, attrs, shift){
             recalculateDeep(shift);
             attrs= attrs || {};
-            const prepare_el= createElement(el_name);
-            if(!all_els_counter) container= els[0]= prepare_el;
-            else els[all_els_counter]= getParentElement().appendChild(prepare_el);
-            let el= els[all_els_counter];
+            if(!all_els_counter) container= els[0]= el;
+            else els[all_els_counter]= getParentElement().appendChild(el);
+            
+            el= els[all_els_counter];
             all_els_counter+= 1;
             assign(el, attrs);
             const add_out= Object.create(component_out);

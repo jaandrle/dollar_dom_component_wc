@@ -1,15 +1,13 @@
 /* jshint esversion: 6,-W097, -W040, browser: true, expr: true, undef: true */
 /* global $dom, customElements */
 $dom.wc= (function(){
-    let el_style;
     /**
      * @typedef T_WC_ATT_Config
      * @type {object}
-     * @template {Boolean|String|Number} T
      * @property {false|string} [name_html] Controls attribute is available in HTML representation of the Element. `False` means no, `Undefined` means converts `name_html`, any string is used as name.
-     * @property {boolean} [observed=true]
-     * @property {T} [type=String]
-     * @property {T} [initial]
+     * @property {boolean} [observed=true] Toggles listener for changing this attribute/property in JS/HTML.
+     * @property {Boolean<>|String<>|Number<>} [type=String] In fact, use for converting from HTML attribute!
+     * @property {boolean|string|number} [initial] Initial value, use the same type as `type`.
      * */
     /**
      * @callback Attribute
@@ -22,6 +20,7 @@ $dom.wc= (function(){
      * @property {false|"open"|"closed"} mode
      * @property {object} head Pseudo element representing “common place” for styles shared across component instances.
      * @property {(style_text: string, parent?: string)=> void} head.appendStyle CSS can be written in generalize form with(out) shadow root by `parent`. This string will be replaced with correct parent selector (`tag_name` when no shadow root, empty elsewhere).
+     * @property {<T extends Record<string, any>>(varibales: T, scoped?: boolean= true)=> Record<keyof T,string>} head.cssVariables Defines CSS variables in the form of `--local-NAME: var(--NAME, DEFAULT)` based on `Record<variable name, default value>`. If `scoped`, the tag name is prepend for given css variable name. Returns object with the same keys and css string representing variable.
      * @property {(dom_data: HTMLLinkElement)=> void} head.appendLink
      * */
     /**
@@ -60,6 +59,17 @@ $dom.wc= (function(){
                     if(parent) style_text= style_text.replace(new RegExp(parent, "g"), is_shadow ? "" : tag_name);
                     if(is_shadow) style_text= style_text.replace(/:host/g, tag_name);
                     this.style.appendChild(Object.assign(document.createTextNode(style_text.trim())));
+                }),
+                cssVariables: configOnlyFunction(function(vars, scoped= true){
+                    const out= {};
+                    const css= Object.entries(vars).map(function([ varible, initial= null ]){
+                        const initial_str= initial===null ? "" : (initial==="" ? `, "${initial}"` : `, ${initial}`);
+                        const variable_name= scoped ? tag_name+"-"+varible : varible;
+                        out[varible]= `var(--local-${variable_name})`;
+                        return `--local-${variable_name}: var(--${variable_name}${initial_str});`;
+                    }).join(" ");
+                    this.appendStyle(`& *{${css}}`, "&");
+                    return out;
                 }),
                 appendLink: configOnlyFunction(function(dom_data){
                     if(!this.links) this.links= document.createDocumentFragment();
@@ -103,8 +113,9 @@ $dom.wc= (function(){
                 storage.get(this).dom.mount(el_shadow);
             }
             attributeChangedCallback(name, value_old, value_new){
-                if(!this.$dom||value_new===value_old) return false;
-                storage.get(this).dom.update({ [hyphensToCamelCase(name)]: value_new });
+                const { dom }= storage.get(this);
+                if(!dom||value_new===value_old) return false;
+                dom.update({ [hyphensToCamelCase(name)]: value_new });
             }
             disconnectedCallback(){ storage.get(this).dom= storage.get(this).dom.destroy(); }
             constructor(){

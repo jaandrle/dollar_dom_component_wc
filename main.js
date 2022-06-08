@@ -6,24 +6,24 @@
  * @type {HTMLAppTestElement}
  * @slot test - Test slot
  * @fires change - `{detail: count}`
- * @cssprop [--app-test-color=purple] - Test
  * */
-const C= $dom.wc("app-test", function({ attribute, shadowRoot, tag_name }){
+const C= $dom.wc("app-test", function({ attribute, shadowRoot }){
     const { head }= shadowRoot("closed");
 
     /** Test cumulator attribute and property */
     attribute("count", { initial: 1, type: Number });
     /** Test property without “html part” */
-    attribute("testText", { name_html: false, initial: "Test text" });
+    attribute("testText", { initial: "Test text", name_html: false });
 
-    const css_color= tag_name+"-color";
+    const { color }= head.cssVariables({
+        /** Testing custom CSS prop */ color: "purple"
+    });
     head.appendStyle(`
-        * { --local-${css_color}: var(--${css_color}, purple); }
         :host { display: block; }
         & b { color: green; }
         & .bold {
             font-weight: bold;
-            color: var(--local-${css_color});
+            color: ${color};
         }`,
     "&");
     /** @type {HTMLAppTestElement_connected} */

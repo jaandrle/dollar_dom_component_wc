@@ -2,15 +2,16 @@
 * Testing component `app-test`
  * @slot test - Test slot
  * @fires change - `{detail: count}`
- * @cssprop [--app-test-color=purple] - Test
  *
  * @element app-test
- * @attr {number} [count=1] Test cumulator attribute and property 
+ * @attr {number} [count=1] Test cumulator attribute and property
+ * @attr {string} [test-text=Test text] Test property without “html part”
+ * @cssprop [--color=purple] - Testing custom CSS prop
  * */
 class HTMLAppTestElement extends HTMLElement{
-    /** Test cumulator attribute and property  */
+    /** Test cumulator attribute and property */
     count: number= 1
-    /** Test property without “html part”  */
+    /** Test property without “html part” */
     testText: string= "Test text"
     dispatchEvent(event: Event): boolean;
     dispatchEvent(event: "change", params: CustomEventInit): boolean
@@ -18,9 +19,9 @@ class HTMLAppTestElement extends HTMLElement{
 /** This function is called in `connectedCallback` lifecycle event of {@link HTMLAppTestElement} */
 interface HTMLAppTestElement_connected{
 (this: HTMLAppTestElement, {
-    /** Test cumulator attribute and property  */
+    /** Test cumulator attribute and property */
     count: number= 1,
-    /** Test property without “html part”  */
+    /** Test property without “html part” */
     testText: string= "Test text"
 }): $dom.component_main
 }

@@ -436,7 +436,12 @@ function init(global){
         for(let i=0, key, attr, i_length= object_attributes_keys.length; i<i_length; i++){
             key= object_attributes_keys[i];
             attr= object_attributes[key];
-            if(typeof attr==="undefined"){ if(Reflect.has(element, key)){ Reflect.deleteProperty(element, key); } continue; }
+            const key_aria_data= /(aria|data)([A-Z])/.test(key) ? key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase() : false;
+            if(typeof attr==="undefined"){
+                if(key_aria_data) element.removeAttribute(key_aria_data);
+                if(Reflect.has(element, key)) Reflect.deleteProperty(element, key);
+                continue;
+            }
             switch(key){
                 case "style":
                     if(typeof attr==="string") element.setAttribute("style", attr);
@@ -460,7 +465,8 @@ function init(global){
                     element.setAttribute(key, attr);
                     break;
                 default:
-                    element[key]= attr;
+                    if(key_aria_data) element.setAttribute(key_aria_data, attr);
+                    else element[key]= attr;
                     break;
             }
         }

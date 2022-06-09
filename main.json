@@ -11,12 +11,6 @@
           "description": "Test cumulator attribute and property",
           "type": "number",
           "default": "1"
-        },
-        {
-          "name": "test-text",
-          "description": "Test property without “html part”",
-          "type": "string",
-          "default": "\"Test text\""
         }
       ],
       "properties": [

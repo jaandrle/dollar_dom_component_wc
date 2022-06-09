@@ -41,6 +41,8 @@ declare namespace $dom {
      * Just element attributtes
      * 
      * In most cases, you can use native propertie such as [MDN WEB/API/Element](https://developer.mozilla.org/en-US/docs/Web/API/Element) and so on (e.g. [`Text`](https://developer.mozilla.org/en-US/docs/Web/API/Text)).
+     * 
+     * There is added support for `data[A-Z].*`/`aria[A-Z].*` to be converted to the kebab-case alternatives.
      * @private
      */
     type T_DOM_ATTRS<T extends keyof T_DOM_HETNM | T_DOM_HETNM[keyof T_DOM_HETNM]>=
@@ -309,6 +311,9 @@ declare namespace $dom {
      * ```javascript
      * $dom.assign(A_ELEMENT, { href: "www.google.com" });//=> <a href="www.google.com" …
      * $dom.assign(IMG_ELEMENT, { src: "image.png" });//=> <img src="image.png" …
+     *
+     * **#4 data\* and aria\***
+     * $dom.assign(el, { ariaLabel: "The aria-label", dataExample: "data-example" });//=> <body aria-label="The aria-label" data-example="data-example">
      * ```
      * @category Public
      */

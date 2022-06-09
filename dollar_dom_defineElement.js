@@ -1,6 +1,6 @@
 /* jshint esversion: 6,-W097, -W040, browser: true, expr: true, undef: true */
 /* global $dom, customElements */
-$dom.wc= (function(){
+$dom.defineElement= (function(){
     /**
      * @typedef T_WC_ATT_Config
      * @type {object}
@@ -35,8 +35,10 @@ $dom.wc= (function(){
      * @type {object}
      * */
     /**
+     * This defines Autonomous Custom Element (see {@link https://html.spec.whatwg.org/multipage/custom-elements.html#custom-elements-core-concepts}).
+     * (Polyfill https://github.com/ungap/custom-elements).
      * @param {string} tag_name Custom element tag name in the form `something-something` (e. g. `x-app`, `x-screen`, `app-element`, …)
-     * @param {(config: T_WC_SideEffects)=> (initial: T_WC_Attributes)=> $dom.component_main} funConfig
+     * @param {(config: T_WC_SideEffects)=> (initial: T_WC_Attributes)=> $dom.component_main} funConfig This function is called before `class extends HTMLElement` definition. This is place to set up custom element. Returns classical “`$dom.component`”, which is called when `connectedCallback`.
      * */
     return function defineCustomElement(tag_name, funConfig){
         const /* temporaly */ attributes= [], styles= [];

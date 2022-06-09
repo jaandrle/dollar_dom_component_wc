@@ -1,7 +1,7 @@
 {
     "files": [
         "./$dom_component.d.ts",
-        "./dollar_dom_wc.js",
+        "./dollar_dom_defineElement.js",
         "./main.js",
         "./main.d.ts"
     ]

@@ -31,7 +31,7 @@ if(!src_path||src_path.indexOf("*")!==-1||!existsSync(src_path)){
 const target_path= process.argv[3] || src_path.replace(".js", ".d.ts");
 
 const components= Array.from(readFileSync(src_path).toString()
-    .matchAll(/(\/\*\*\s*(?<comment>(\s|\S)+)\s+(\* )?\*\/\s)?.*\$dom\.wc\(.(?<tag_name>[^\"\']+)(?<define>(\s|\S)+)return function/g))
+    .matchAll(/(\/\*\*\s*(?<comment>(\s|\S)+)\s+(\* )?\*\/\s)?.*\$dom\.defineElement\(.(?<tag_name>[^\"\']+)(?<define>(\s|\S)+)return function/g))
     .map(function({ groups: { tag_name, define, comment= "" } }){
         const out= { tag_name, comment };
         out.props= Array.from(define.matchAll(/(\/\*\* (?<comment>.*) \*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))

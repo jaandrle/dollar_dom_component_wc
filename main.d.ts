@@ -5,7 +5,6 @@
  *
  * @element app-test
  * @attr {number} [count=1] Test cumulator attribute and property
- * @attr {string} [test-text=Test text] Test property without “html part”
  * @cssprop [--color=purple] - Testing custom CSS prop
  * */
 class HTMLAppTestElement extends HTMLElement{

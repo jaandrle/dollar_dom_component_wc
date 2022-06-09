@@ -7,13 +7,8 @@
  * @slot test - Test slot
  * @fires change - `{detail: count}`
  * */
-const C= $dom.wc("app-test", function({ attribute, shadowRoot }){
+const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
     const { head }= shadowRoot("closed");
-
-    /** Test cumulator attribute and property */
-    attribute("count", { initial: 1, type: Number });
-    /** Test property without “html part” */
-    attribute("testText", { initial: "Test text", name_html: false });
 
     const { color }= head.cssVariables({
         /** Testing custom CSS prop */ color: "purple"
@@ -26,8 +21,15 @@ const C= $dom.wc("app-test", function({ attribute, shadowRoot }){
             color: ${color};
         }`,
     "&");
+
+    /** Test cumulator attribute and property */
+    attribute("count", { initial: 1, type: Number });
+    /** Test property without “html part” */
+    attribute("testText", { initial: "Test text", name_html: false });
     /** @type {HTMLAppTestElement_connected} */
     return function testComponent({ count, testText }){
+        $dom.assign(this, { ariaLabel: "Test" });
+        
         const click_event= $dom.componentListener("click", ()=> this.dispatchEvent("change", { detail: count }));
         
         const { add, component, share }= $dom.component("<>");

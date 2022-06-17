@@ -27,7 +27,7 @@ $dom.defineElement= (function(){
      * @typedef T_WC_SideEffects
      * @type {object}
      * @property {Attribute} attribute
-     * @property {(mode: false|"open"|"closed")=> T_WC_SideEffects_ShadowRoot} shadowRoot Sets shadow root (see [Using shadow DOM - Web Components | MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM#basic_usage))
+     * @property {(mode: false|"open"|"closed", params?: { slots?: "native"|"simulated" })=> T_WC_SideEffects_ShadowRoot} shadowRoot Sets shadow root (see [Using shadow DOM - Web Components | MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM#basic_usage)). When `mode=false`, it is possible to simulate `<slot>` behaviour like for Shadow Root by using `params= { slots: "simulated" }`.
      * */
     /**
      * HTML attributes for the element, defined by {@link Attribute} in {@link T_WC_SideEffects}.
@@ -47,19 +47,25 @@ $dom.defineElement= (function(){
         
         let is_config_phase= true;
         const shadow_root= { mode: false }; Object.assign(shadow_root, {
-            update(mode){
+            update(mode, params){
                 if(this._locked) throw new Error("Shadow Root can't be changed multiple times!");
                 this._locked= true;
                 this.mode= mode;
+                if(mode===false){
+                    this.params= Object.assign({ slots: "native" }, params);
+                }
                 return shadow_root;
             },
             head: {
                 style: undefined, links: undefined,
                 appendStyle: configOnlyFunction(function(style_text, parent){
-                    if(!this.style) this.style= Object.assign(document.createElement("style"), { type: "text/css" });
                     const is_shadow= shadow_root.mode!==false;
+                    if(!this.style) this.style= Object.assign(document.createElement("style"), {
+                        type: "text/css",
+                        textContent: is_shadow ? "" : tag_name+" *{ all: revert; }"
+                    });
                     if(parent) style_text= style_text.replace(new RegExp(parent, "g"), is_shadow ? "" : tag_name);
-                    if(is_shadow) style_text= style_text.replace(/:host/g, tag_name);
+                    if(!is_shadow) style_text= style_text.replace(/:host/g, tag_name);
                     this.style.appendChild(Object.assign(document.createTextNode(style_text.trim())));
                 }),
                 cssVariables: configOnlyFunction(function(vars, scoped= true){
@@ -88,7 +94,7 @@ $dom.defineElement= (function(){
         const funComponent= funConfig({
             tag_name,
             attribute: configOnlyFunction(attribute.bind(attributes)),
-            shadowRoot: configOnlyFunction(mode=> shadow_root.update(mode))
+            shadowRoot: configOnlyFunction((mode, params)=> shadow_root.update(mode, params))
         });
         is_config_phase= false;
         const is_props_observed= attributes.find(({ name_html, observed })=> name_html===false&&observed);
@@ -108,7 +114,12 @@ $dom.defineElement= (function(){
                     def[name]= this[name];
                 }
                 storage.get(this).dom= funComponent.call(this, def);
-                if(!shadow_root.mode) return storage.get(this).dom.mount(this);
+                if(!shadow_root.mode){
+                    const slots= processSlots(this, shadow_root);
+                    storage.get(this).dom.mount(this);
+                    if(slots) slots();
+                    return;
+                }
 
                 const { el_shadow }= storage.get(this);
                 el_shadow.append(...shadow_root.head.clone(true));
@@ -120,7 +131,7 @@ $dom.defineElement= (function(){
                 dom.update({ [hyphensToCamelCase(name)]: value_new });
             }
             disconnectedCallback(){ storage.get(this).dom= storage.get(this).dom.destroy(); }
-            constructor(){
+            constructor(data){
                 super();
                 const { mode }= shadow_root;
 
@@ -128,6 +139,9 @@ $dom.defineElement= (function(){
                 if(is_props_observed) s.props= new Map();
                 if(mode) s.el_shadow= this.attachShadow({ mode });
                 storage.set(this, s);
+                
+                if(data) $dom.assign(this, data);
+                return this;
             }
             dispatchEvent(event, params){
                 if(typeof event!=="string") return super.dispatchEvent(event);
@@ -173,4 +187,51 @@ $dom.defineElement= (function(){
     
     function hyphensToCamelCase(text){ return text.replace(/-([a-z])/g, (_, l)=> l.toUpperCase()); }
     function camelCaseToHyphens(text){ return text.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(); }
+    /** @param {HTMLElement} element */
+    function processSlots(element, shadow_root){
+        if(shadow_root.params.slots!=="simulated")
+            return false;
+
+        const els_hosts= Object.values(Array.from(element.children)
+            .reduce(function(out, curr){
+                const { slot }= curr;
+                if(!Reflect.has(out, slot)){
+                    Reflect.set(out, slot, curr);
+                    return out;
+                }
+                const parent= Reflect.get(out, slot);
+                if(parent instanceof DocumentFragment){
+                    parent.appendChild(curr);
+                    return out;
+                }
+                const f= Object.assign(document.createDocumentFragment(), { slot });
+                f.append(parent, curr);
+                Reflect.set(out, slot, f);
+                return out;
+            }, {}));
+        if(!els_hosts.length) return false;
+
+        return function process(){
+            const els_slots= toElsNamesDictionary(element.querySelectorAll("slot"));
+            for(const el of els_hosts)
+                replace(Reflect.get(els_slots, el.slot), el);
+        };
+        
+        /** @param {HTMLElement} el_slot @param {HTMLElement} el_host */
+        function replace(el_slot, el_host){
+            if(!el_slot) return el_host.remove();
+            const { className }= el_slot;
+            if(className){
+                if(el_host instanceof DocumentFragment)
+                    Array.from(el_host.children).forEach(el=> el.classList.add(...className.split(" ")));
+                else
+                    el_host.classList.add(...className.split(" "));
+            }
+            el_slot.parentElement.insertBefore(el_host, el_slot);
+            el_slot.remove();
+        }
+        function toElsNamesDictionary(els_query){
+            return Array.from(els_query).reduce((o, el)=> (Reflect.set(o, el.name, el), o), {});
+        }
+    }
 })();

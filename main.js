@@ -8,7 +8,7 @@
  * @fires change - `{detail: count}`
  * */
 const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
-    const { head }= shadowRoot("closed");
+    const { head }= shadowRoot("closed", { slots: "simulated" });
 
     const { color }= head.cssVariables({
         /** Testing custom CSS prop */ color: "purple"
@@ -28,18 +28,22 @@ const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
     attribute("testText", { initial: "Test text", name_html: false });
     /** @type {HTMLAppTestElement_connected} */
     return function testComponent({ count, testText }){
-        $dom.assign(this, { ariaLabel: "Test" });
-        
-        const click_event= $dom.componentListener("click", ()=> this.dispatchEvent("change", { detail: count }));
+        const dispatchChange= this.dispatchEvent.bind(this, "change");
+        const click_event= $dom.componentListener("click", function({ target }){
+            count+= Number(target.textContent);
+            dispatchChange({ detail: count });
+            this.update({ count });
+        });
         
         const { add, component, share }= $dom.component("<>");
             component(paragraphComponent({ count }));
             add("i", null, -1).onupdate({ testText }, ({ testText })=> ({ textContent: testText }));
             add("br", null, -1);
-            add("slot", { name: "test", className: "bold" }, -1);
+            add("slot", { name: "test-slot", className: "bold" }, -1);
                 add("span", { textContent: "Default slot" });
             add("br", null, -2);
-            add("button", { textContent: "Click", part: "ahoj" }, -1).on(click_event);
+            add("button", { textContent: "-1", part: "ahoj" }, -1).on(click_event);
+            add("button", { textContent: "+1", part: "ahoj" }, -1).on(click_event);
         return share;
     };
     
@@ -51,3 +55,8 @@ const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
         return share;
     }
 });
+
+document.body.append(
+    new C({ count: 24, ariaLabel: "Test" }),
+    $dom.assign(document.createElement(C.tagName), { count: -24, ariaLabel: "Test" })
+);

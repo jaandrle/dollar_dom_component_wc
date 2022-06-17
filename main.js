@@ -28,11 +28,9 @@ const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
     attribute("testText", { initial: "Test text", name_html: false });
     /** @type {HTMLAppTestElement_connected} */
     return function testComponent({ count, testText }){
-        const dispatchChange= this.dispatchEvent.bind(this, "change");
-        const click_event= $dom.componentListener("click", function({ target }){
-            count+= Number(target.textContent);
-            dispatchChange({ detail: count });
-            this.update({ count });
+        const click_event= $dom.componentListener("click", ({ target })=> {
+            this.count+= Number(target.textContent);
+            this.dispatchEvent("change", { detail: count });
         });
         
         const { add, component, share }= $dom.component("<>");

@@ -31,7 +31,7 @@ if(!src_path||src_path.indexOf("*")!==-1||!existsSync(src_path)){
 const target_path= process.argv[3] || src_path.replace(".js", ".d.ts");
 
 const components= Array.from(readFileSync(src_path).toString()
-    .matchAll(/(\/\*\*\s*(?<comment>(\s|\S)+)\s+(\* )?\*\/\s)?.*\$dom\.defineElement\(.(?<tag_name>[^\"\']+)(?<define>(\s|\S)+)return function/g))
+    .matchAll(/(\/\*\*\s*(?<comment>(?:(\s|\S)(?!(?:\* )?\*\/))+)\s+(\* )?\*\/\s)?.*\$dom\.defineElement\(.(?<tag_name>[^\"\']+)(?<define>(?:(\s|\S)(?<!return function))+)return function/g))
     .map(function({ groups: { tag_name, define, comment= "" } }){
         const out= { tag_name, comment };
         out.props= Array.from(define.matchAll(/(\/\*\* (?<comment>.*) \*\/\n\s*)?(?<attribute_parse>attribute\([^;]+\);)/g))
@@ -71,25 +71,29 @@ const components= Array.from(readFileSync(src_path).toString()
             `    ${name_js}: ${type}${typeof initial!=="undefined" ? "= "+attributeInitial(initial) : ""}`
         ].join("\n"));
         return acc + [
+            `interface ${name_class}_props{`,
+                props_str.join("\n"),
+            "}",
             "/**",
                 comment_arr.join("\n"),
                 " * @element "+tag_name,
                 attrs.join("\n"),
                 css_vars.join("\n"),
             " * */",
-            `class ${name_class} extends HTMLElement{`,
-                props_str.join("\n"),
+            `interface ${name_class} extends ${name_class}_props, HTMLElement{`,
+            `    new(options: ${name_class}_props): ${name_class}`,
             "    dispatchEvent(event: Event): boolean;",
             "    dispatchEvent(event: "+events+", params: CustomEventInit): boolean",
             "}",
-            `/** This function is called in \`connectedCallback\` lifecycle event of {@link ${name_class}} */`,
-            `interface ${name_class}_connected{`,
-            `(this: ${name_class}, {`,
-                props_str.join(",\n"),
-            "}): $dom.component_main",
+            `declare var ${name_class}: { prototype: ${name_class}, new(options: ${name_class}_props): ${name_class} };`,
+            "interface $domCustomElementRegistry{",
+            `    "${tag_name}": {`,
+            `        funConfig(this: ${name_class}, options: ${name_class}_props): $dom.component_main`,
+            `        returns: ${name_class}`,
+            "    }",
             "}"
         ].join("\n");
-    }, "");
+    }, "") + `\ninterface Document{ createElement<K extends keyof $domCustomElementRegistry>(tagName: K, options?: ElementCreationOptions): $domCustomElementRegistry[K]["returns"]; }`;
 
 writeFileSync(target_path, components);
 
@@ -101,7 +105,7 @@ function attributeInitial(initial){
     initial= initial.replace(/"/g, '\\"');
     return `"${initial}"`;
 }
-function attribute(name_js, { initial, name_html, type= String, observed= true }){
+function attribute(name_js, { initial, name_html, type= String, observed= true }= {}){
     if(name_html!==false)
         name_html= name_html || camelCaseToHyphens(name_js);
     return { name_js, name_html, initial, type: type.name.toLowerCase(), observed };

@@ -3,12 +3,11 @@
 
 /**
  * Testing component `app-test`
- * @type {HTMLAppTestElement}
  * @slot test - Test slot
  * @fires change - `{detail: count}`
  * */
 const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
-    const { head }= shadowRoot("closed", { slots: "simulated" });
+    const { head }= shadowRoot("closed", { slots: "simulated", scoped: true });
 
     const { color }= head.cssVariables({
         /** Testing custom CSS prop */ color: "purple"
@@ -26,7 +25,7 @@ const C= $dom.defineElement("app-test", function({ attribute, shadowRoot }){
     attribute("count", { initial: 1, type: Number });
     /** Test property without “html part” */
     attribute("testText", { initial: "Test text", name_html: false });
-    /** @type {HTMLAppTestElement_connected} */
+    
     return function testComponent({ count, testText }){
         const click_event= $dom.componentListener("click", ({ target })=> {
             this.count+= Number(target.textContent);

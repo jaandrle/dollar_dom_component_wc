@@ -24,10 +24,17 @@ $dom.defineElement= (function(){
      * @property {(dom_data: HTMLLinkElement)=> void} head.appendLink
      * */
     /**
+     * When `mode=false`, it is possible to simulate some shadow root behaviour.
+     * @typedef T_WC_SideEffects_false_params
+     * @type {object}
+     * @property {"native"|"simulated"} [slots=native] The `<slot>` behaviour like for Shadow Root by using `params= { slots: "simulated" }`.
+     * @property {boolean} [scoped=false] In fact, applies `tagName *{all: revert;}`.
+     * */
+    /**
      * @typedef T_WC_SideEffects
      * @type {object}
      * @property {Attribute} attribute
-     * @property {(mode: false|"open"|"closed", params?: { slots?: "native"|"simulated" })=> T_WC_SideEffects_ShadowRoot} shadowRoot Sets shadow root (see [Using shadow DOM - Web Components | MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM#basic_usage)). When `mode=false`, it is possible to simulate `<slot>` behaviour like for Shadow Root by using `params= { slots: "simulated" }`.
+     * @property {(mode: false|"open"|"closed", params?: T_WC_SideEffects_false_params)=> T_WC_SideEffects_ShadowRoot} shadowRoot Sets shadow root (see [Using shadow DOM - Web Components | MDN](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM#basic_usage)).
      * */
     /**
      * HTML attributes for the element, defined by {@link Attribute} in {@link T_WC_SideEffects}.
@@ -37,8 +44,10 @@ $dom.defineElement= (function(){
     /**
      * This defines Autonomous Custom Element (see {@link https://html.spec.whatwg.org/multipage/custom-elements.html#custom-elements-core-concepts}).
      * (Polyfill https://github.com/ungap/custom-elements).
-     * @param {string} tag_name Custom element tag name in the form `something-something` (e. g. `x-app`, `x-screen`, `app-element`, …)
-     * @param {(config: T_WC_SideEffects)=> (initial: T_WC_Attributes)=> $dom.component_main} funConfig This function is called before `class extends HTMLElement` definition. This is place to set up custom element. Returns classical “`$dom.component`”, which is called when `connectedCallback`.
+     * @template {keyof $domCustomElementRegistry} T
+     * @param {T} tag_name Custom element tag name in the form `something-something` (e. g. `x-app`, `x-screen`, `app-element`, …)
+     * @param {(config: T_WC_SideEffects)=> $domCustomElementRegistry[T]["funConfig"]} funConfig This function is called before `class extends HTMLElement` definition. This is place to set up custom element. Returns classical “`$dom.component`”, which is called when `connectedCallback`.
+     * @returns {$domCustomElementRegistry[T]["returns"]}
      * */
     return function defineCustomElement(tag_name, funConfig){
         const /* temporaly */ attributes= [], styles= [];
@@ -62,7 +71,7 @@ $dom.defineElement= (function(){
                     const is_shadow= shadow_root.mode!==false;
                     if(!this.style) this.style= Object.assign(document.createElement("style"), {
                         type: "text/css",
-                        textContent: is_shadow ? "" : tag_name+" *{ all: revert; }"
+                        textContent: is_shadow || !shadow_root.params.scoped ? "" : tag_name+" *{ all: revert; }"
                     });
                     if(parent) style_text= style_text.replace(new RegExp(parent, "g"), is_shadow ? "" : tag_name);
                     if(!is_shadow) style_text= style_text.replace(/:host/g, tag_name);

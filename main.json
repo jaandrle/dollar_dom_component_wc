@@ -14,16 +14,6 @@
           "description": "`change` {} - `{detail: count}`"
         }
       ]
-    },
-    {
-      "name": "app-pokus",
-      "description": "Attributes:\n\n  * `number-next` {string} - \n\nProperties:\n\n  * `numberNext` {`string`} - ",
-      "attributes": [
-        {
-          "name": "number-next",
-          "description": "`number-next` {string} - \n\n"
-        }
-      ]
     }
   ],
   "globalAttributes": [],
